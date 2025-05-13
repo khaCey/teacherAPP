@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <script>
+    function getStatusBadge(status) {
+      var cls = 'badge-secondary';
+      switch (status) {
+        case '在籍': cls = 'badge-success'; break;
+        case '休会': cls = 'badge-warning'; break;
+        case '返信なし': cls = 'badge-danger'; break;
+        case '退会': case 'DEMO': default: cls = 'badge-secondary';
+      }
+      return '<span class="badge ' + cls + '">' + status + '</span>';
+    }
+
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(function(students) {
+        var row = document.getElementById('todayLessonsRow');
+        row.innerHTML = '';
+        if (!students.length) {
+          row.innerHTML = '<div class="col-12 text-center">No lessons today.</div>';
+          return;
+        }
+        students.forEach(function(s) {
+          var start = new Date(s.EventStart);
+          var end = new Date(s.EventEnd);
+          var timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          var card = document.createElement('div');
+          card.className = 'col-md-4 mb-3';
+          card.innerHTML = `
+            <div class="card p-3 h-100">
+              <div class="card-body text-center">
+                <h5 class="card-title mb-2">${s.Name}</h5>
+                <div class="mb-2">${getStatusBadge(s.Status)}</div>
+                <div class="mb-2"><strong>Time:</strong> ${timeStr}</div>
+                <div class="mb-2"><strong>Title:</strong> ${s.EventTitle}</div>
+              </div>
+            </div>
+          `;
+          row.appendChild(card);
+        });
+      }).getStudentsWithLessonsToday();
+    }
+    </script>
+  </body>
+</html>

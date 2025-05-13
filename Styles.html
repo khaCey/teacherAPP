@@ -1,0 +1,81 @@
+<style>
+  /* Loader overlay */
+  #loader {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(255,255,255,0.7);
+    display:flex; align-items:center; justify-content:center; z-index:2000;
+  }
+  #loader.hidden { display:none; }
+
+  /* Sidebar */
+  .sidebar {
+    height:100vh; position:fixed; padding-top:1rem;
+    transition: margin-left 0.3s ease;
+  }
+  body.sidebar-collapsed #sidebar { margin-left:-16.6667%; }
+  body.sidebar-collapsed #mainContent {
+    margin-left:0!important; flex:0 0 100%!important; max-width:100%!important;
+  }
+
+  /* Details card */
+  .details-card {
+    background:#fff; border-radius:.5rem;
+    box-shadow:0 2px 15px rgba(0,0,0,0.1);
+    padding:1.5rem; margin-bottom:1rem;
+  }
+  .details-header { display:flex; align-items:center; margin-bottom:1rem; }
+  .details-user { display:flex; align-items:center; }
+  .details-user .fa-user-circle {
+    font-size:3rem; margin-right:.75rem; color:#6c757d;
+  }
+
+  /* Summary table */
+  .summary-table th, .summary-table td {
+    border-top:none; padding:.5rem 1rem;
+  }
+
+  /* Payments & notes tables */
+  #paymentsTable th, #notesTable th {
+    background:#007bff; color:#fff; padding:.5rem;
+  }
+  #paymentsTable td, #notesTable td { padding:.5rem; }
+
+  /* Remove default card borders */
+  .card { border:none; }
+
+  /* Modal layering */
+  .modal-backdrop { z-index:1040!important; }
+  .modal-content  { z-index:1100!important; }
+
+  /* Notes scrolling: header + ~3 rows, then scroll */
+  .notes-scroll {
+    max-height: 200px;    /* <-- reduced from 260/180 to 150 */
+    overflow-y: auto;
+  }
+  .notes-scroll thead th {
+    position: sticky;
+    top: 0;
+    background: #007bff;
+    color: #fff;
+    z-index: 1;
+  }/* Payments scrolling: header + ~4 rows, then scroll */
+  .payments-scroll {
+    max-height: 175px;    /* adjust to show ~4–5 rows */
+    overflow-y: auto;
+  }
+  .payments-scroll thead th {
+    position: sticky;
+    top: 0;
+    background: #007bff;
+    color: #fff;
+    z-index: 1;
+  }
+  /* Make both the Status and 当日キャンセル badges the same font-size as the form controls */
+  #detailsStatus .badge,
+  #detailsCancel .badge {
+    font-size: 1.5rem;
+    line-height: 1.2;
+    padding: 0.25em 0.5em;
+  }
+
+</style>

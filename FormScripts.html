@@ -1,0 +1,125 @@
+<script>
+  // map of sheet‐header → input element ID
+  window.headerIds = {};
+
+  /**
+   * Build the two‑column Add/Edit form using explicit, safe IDs for every field,
+   * so non‑ASCII headers like “漢字” won’t be dropped.
+   */
+  function buildFormFields() {
+    const fields = [
+      // { key: sheetHeader,      label: shown above,      id: element ID }
+      { key:'Name',              label:'Name',             id:'field_Name' },
+      { key:'漢字',              label:'漢字',             id:'field_Kanji' },
+      { key:'phone',             label:'phone',            id:'field_phone' },
+      { key:'phone (secondary)', label:'phone (secondary)',id:'field_phone2' },
+      { key:'当日キャンセル',    label:'当日キャンセル',    id:'field_cancel' },
+      { key:'email',             label:'email',            id:'field_email' },
+      { key:'Status',            label:'Status',           id:'field_Status' },
+      { key:'Type',              label:'Type',             id:'field_Type' },
+      { key:'Group',             label:'Group',            id:'field_Group' },
+      { key:'人数',              label:'人数',             id:'field_Count' }
+    ];
+
+    var container = document.getElementById('formFields');
+    container.innerHTML = '';
+    headerIds = {};
+
+    // render two fields per row
+    for (let i = 0; i < fields.length; i += 2) {
+      const left  = fields[i];
+      const right = fields[i+1];
+      let rowHtml = '<div class="form-row">';
+      [left, right].forEach(function(f){
+        headerIds[f.key] = f.id;
+        // choose control
+        let control;
+        if (f.key === '当日キャンセル') {
+          control = `<select class="form-control" id="${f.id}">
+                       <option value="未">未</option>
+                       <option value="済">済</option>
+                     </select>`;
+        }
+        else if (f.key === 'Status') {
+          control = `<select class="form-control" id="${f.id}">
+                       <option>休会</option><option>退会</option>
+                       <option>在籍</option><option>返信無</option>
+                     </select>`;
+        }
+        else if (f.key === 'Type') {
+          control = `<select class="form-control" id="${f.id}">
+                       <option>PROTO</option><option>NEO</option>
+                     </select>`;
+        }
+        else if (f.key === 'Group') {
+          control = `<select class="form-control" id="${f.id}">
+                       <option>Single</option><option>Group</option>
+                     </select>`;
+        }
+        else {
+          // text, email, or number
+          let t = 'text';
+          if (f.key === 'email') t = 'email';
+          if (f.key === '人数')  t = 'number';
+          control = `<input type="${t}" class="form-control" id="${f.id}">`;
+        }
+        rowHtml += `
+          <div class="form-group col-md-6">
+            <label for="${f.id}">${f.label}</label>
+            ${control}
+          </div>`;
+      });
+      rowHtml += '</div>';
+      container.insertAdjacentHTML('beforeend', rowHtml);
+    }
+  }
+
+  // showAnd‐clear the Add form
+  function showForm() {
+    document.getElementById('studentForm').reset();
+    document.getElementById('studentId').value = '';
+    document.getElementById('studentModalLabel').textContent = 'Add Student';
+    $('#studentModal').modal('show');
+    setTimeout(function(){
+      $('.modal-backdrop').last().css('z-index',1060);
+      $('#studentModal').css('z-index',1070);
+    },50);
+  }
+
+  // handle Add or Edit submit
+  function submitForm() {
+    var stu = {}, id = document.getElementById('studentId').value;
+    Object.keys(headerIds).forEach(function(key){
+      stu[key] = document.getElementById(headerIds[key]).value;
+    });
+    if (id) stu.ID = id;
+
+    showLoader();
+    var rpc = google.script.run.withSuccessHandler(onLoad);
+    id ? rpc.updateStudent(stu) : rpc.addStudent(stu);
+    $('#studentModal').modal('hide');
+  }
+
+  // open Edit modal and prefill by exact key
+  function openEditFromDetails() { edit(currentDetailsId); }
+  function edit(id) {
+    showLoader();
+    google.script.run.withSuccessHandler(function(student){
+      document.getElementById('studentId').value = student.ID;
+      Object.keys(headerIds).forEach(function(key){
+        document.getElementById(headerIds[key]).value = student[key] || '';
+      });
+      document.getElementById('studentModalLabel').textContent = 'Edit Student';
+      $('#studentModal').modal('show');
+      setTimeout(function(){
+        $('.modal-backdrop').last().css('z-index',1060);
+        $('#detailsModal').css('z-index',1050);
+        $('#studentModal').css('z-index',1070);
+      },50);
+      hideLoader();
+    }).getStudentById(id);
+  }
+
+  // build form on page load
+  document.addEventListener('DOMContentLoaded', buildFormFields);
+</script>

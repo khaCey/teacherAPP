@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GreenSquare Student Admin</title>
+
+  <!-- Bootstrap CSS -->
+  <link
+    rel="stylesheet"
+    href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- FontAwesome CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <?!= include('Styles'); ?>
+</head>
+<body class="sidebar-collapsed" onload="onLoad()">
+
+  <!-- Loader -->
+  <div id="loader" class="hidden">
+    <div class="spinner-border text-primary" role="status">
+      <span class="sr-only">Loading…</span>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-primary">
+    <button class="btn btn-outline-light mr-2" id="toggleSidebarBtn">
+      <i class="fas fa-ellipsis-v fa-lg"></i>
+    </button>
+    <a class="navbar-brand" href="#">GreenSquare Admin</a>
+    <button class="btn btn-outline-light ml-auto" onclick="showForm()">
+      <i class="fas fa-user-plus"></i> Add Student
+    </button>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav id="sidebar" class="col-md-2 d-none bg-light sidebar">
+        <div class="sidebar-sticky pt-3">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" href="#">
+                <i class="fas fa-users"></i> Students
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <main id="mainContent" class="col-md-10 ml-sm-auto col-lg-10 px-4">
+        <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h2>Student List</h2>
+        </div>
+
+        <!-- Search -->
+        <div class="mb-3">
+          <input
+            type="text"
+            id="searchInput"
+            class="form-control form-control-lg"
+            style="font-size:1.5rem; height:3.5rem;"
+            placeholder="Search">
+        </div>
+
+        <div class="card mb-4 shadow-sm">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead><tr id="tableHeader"></tr></thead>
+                <tbody id="studentTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add/Edit Student Modal -->
+  <div class="modal fade" id="studentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="studentModalLabel" class="modal-title">Add Student</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <form id="studentForm" onsubmit="submitForm(); return false;">
+          <div class="modal-body">
+            <input type="hidden" id="studentId">
+            <div id="formFields"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details Modal -->
+  <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-body p-0">
+          <div class="details-card">
+
+            <!-- Header -->
+            <div class="details-header d-flex justify-content-between align-items-center">
+              <div class="details-user d-flex align-items-center">
+                <i class="fas fa-user-circle"></i>
+                <h4 id="detailsModalLabel" class="mb-0 ml-2"></h4>
+              </div>
+              <div class="d-flex align-items-center">
+                <div id="detailsStatus" class="ml-3"></div>
+                <div id="detailsCancel" class="ml-3"></div>
+              </div>
+            </div>
+
+            <!-- Latest Record & Payments -->
+            <div class="row mb-4">
+              <!-- Latest Record -->
+              <div class="col-md-3">
+                <h6 class="bg-light p-2 mb-0">Latest Record</h6>
+                <div class="table-responsive">
+                  <table class="table summary-table mb-0" style="width:auto;">
+                    <thead><tr><th></th><th>今月</th><th>来月</th></tr></thead>
+                    <tbody>
+                      <tr><td>Payment</td><td id="curPaymentThis" class="text-center"></td><td id="curPaymentNext" class="text-center"></td></tr>
+                      <tr><td>Schedule</td><td id="curScheduleThis" class="text-center"></td><td id="curScheduleNext" class="text-center"></td></tr>
+                      <tr><td>Booked</td><td id="curBookedThis" class="text-center"></td><td id="curBookedNext" class="text-center"></td></tr>
+                      <tr><td>Scheduled</td><td id="curScheduledThis" class="text-center"></td><td id="curScheduledNext" class="text-center"></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm mt-2" onclick="showEditRecordModal()"><i class="fas fa-edit"></i> Edit Record</button>
+              </div>
+
+              <!-- Payments -->
+              <div class="col-md-9">
+                <h6 class="bg-light p-2 mb-0">All Payments</h6>
+                <div class="table-responsive payments-scroll mb-0">
+                  <table class="table table-sm" id="paymentsTable">
+                    <thead class="thead-light"><tr id="paymentsHeader"></tr></thead>
+                    <tbody id="paymentsBody"></tbody>
+                  </table>
+                </div>
+                <!-- Add Payment Button -->
+                <button class="btn btn-outline-primary mb-4" onclick="showPaymentModal()">
+                  <i class="fas fa-plus"></i> Add Payment
+                </button>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <h6>All Notes</h6>
+            <div class="table-responsive notes-scroll mb-3">
+              <table class="table table-sm" id="notesTable" style="width:100%; table-layout:fixed;">
+                <thead class="thead-light"><tr id="notesHeader"></tr></thead>
+                <tbody id="notesBody"></tbody>
+              </table>
+            </div>
+            <button class="btn btn-outline-primary mb-4" onclick="showNoteModal()"><i class="fas fa-plus"></i> Add Note</button>
+
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger mr-auto" onclick="deleteFromDetails()"><i class="fas fa-times"></i> Delete</button>
+          <button type="button" class="btn btn-primary" onclick="openEditFromDetails()"><i class="fas fa-pencil-alt"></i> Edit</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Payment Modal -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <!-- … header … -->
+        <form id="paymentForm" onsubmit="submitPayment(); return false;">
+          <div class="modal-body">
+            <input type="hidden" id="paymentTxnId">
+
+            <div class="form-group">
+              <label for="paymentDate">Date</label>
+              <input type="date" id="paymentDate" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentYear">Year</label>
+              <input type="number" id="paymentYear" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentMonth">Month</label>
+              <input type="text" id="paymentMonth" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentLessons">Lessons</label>
+              <input type="number" id="paymentLessons" class="form-control" required>
+            </div>
+
+            <!-- ← INSERT HERE: Planned Lessons input -->
+            <div class="form-group">
+              <label for="paymentScheduledCount">Planned Lessons</label>
+              <input type="number" id="paymentScheduledCount" class="form-control" required>
+            </div>
+            <!-- ↑ end insertion -->
+
+            <div class="form-group">
+              <label for="paymentPrice">Total</label>
+              <input type="number" id="paymentPrice" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+              <label for="paymentMethod">Method</label>
+              <select id="paymentMethod" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label for="paymentStaff">Staff</label>
+              <select id="paymentStaff" class="form-control" required></select>
+            </div>
+          </div>
+          <!-- … footer … -->
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Add/Edit Payment Modal -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="paymentModalLabel">Add Payment</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <form id="paymentForm" onsubmit="submitPayment(); return false;">
+          <div class="modal-body">
+            <input type="hidden" id="paymentTxnId">
+            <div class="form-group">
+              <label for="paymentDate">Date</label>
+              <input type="date" id="paymentDate" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentYear">Year</label>
+              <input type="number" id="paymentYear" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentMonth">Month</label>
+              <input type="text" id="paymentMonth" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentLessons">Lessons</label>
+              <input type="number" id="paymentLessons" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="paymentPrice">Total</label>
+              <input type="number" id="paymentPrice" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+              <label for="paymentMethod">Method</label>
+              <select id="paymentMethod" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label for="paymentStaff">Staff</label>
+              <select id="paymentStaff" class="form-control" required></select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Payment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+  <?!= include('HelperFunctions'); ?>
+  <?!= include('ListScripts'); ?>
+  <?!= include('FormScripts'); ?>
+  <?!= include('DetailsScripts'); ?>
+  <?!= include('RecordScripts'); ?>
+  <?!= include('NoteScripts'); ?>
+  <?!= include('PaymentScripts'); ?>
+</body>
+</html>

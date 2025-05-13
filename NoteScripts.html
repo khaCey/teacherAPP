@@ -1,0 +1,77 @@
+<script>
+  let isNewNote = false;
+
+  // Generate a unique Notes ID using the current timestamp
+  function generateNoteId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 7; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+
+  // For creating a new note or editing an existing note
+  function showNoteModal(note = null) {
+    document.getElementById('noteForm').reset();
+
+    if (note) {
+      isNewNote = false;
+      document.getElementById('noteModalLabel').textContent = 'Edit Note';
+      document.getElementById('noteId').value = note['ID'];
+      let parts = note.Date.split('/');
+      document.getElementById('noteDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      document.getElementById('noteText').value = note.Note;
+      document.getElementById('noteStaff').value = note.Staff;
+      document.getElementById('noteStaff').disabled = false;
+    } else {
+      isNewNote = true;
+      document.getElementById('noteModalLabel').textContent = 'Add Note';
+      document.getElementById('noteId').value = generateNoteId();
+      document.getElementById('noteDate').valueAsDate = new Date();
+      document.getElementById('noteText').value = '';
+      document.getElementById('noteStaff').value = '';
+      document.getElementById('noteStaff').disabled = true;
+
+      // Fetch staff from server (Code!B1)
+      google.script.run
+        .withSuccessHandler(function(name) {
+          document.getElementById('noteStaff').value = name;
+        })
+        .getCurrentStaffName();
+    }
+
+    $('#noteModal').modal('show');
+  }
+
+  function submitNote() {
+    const id = document.getElementById('noteId').value;
+    const o = {
+      'ID':   id,
+      'Date':       document.getElementById('noteDate').value.split('-').reverse().join('/'),
+      'Note':       document.getElementById('noteText').value,
+      'Staff':      document.getElementById('noteStaff').value,
+      'Student ID': currentDetailsId
+    };
+
+    showLoader();
+
+    const rpc = google.script.run
+      .withSuccessHandler(function() {
+        $('#noteModal').modal('hide');
+        hideLoader();
+        viewDetails(currentDetailsId);
+      })
+      .withFailureHandler(function(e) {
+        hideLoader();
+        alert('Error saving note: ' + e.message);
+      });
+
+    if (isNewNote) {
+      rpc.addNote(o);
+    } else {
+      rpc.updateNote(o);
+    }
+  }
+</script>

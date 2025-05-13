@@ -1,0 +1,59 @@
+<script>
+  function showEditRecordModal(){
+  // Make sure the modal’s inputs are actually on the page
+  const monEl  = document.getElementById('editRecordMonth'),
+        payEl  = document.getElementById('editRecordPayment'),
+        schEl  = document.getElementById('editRecordSchedule'),
+        bkdEl  = document.getElementById('editRecordBooked'),
+        schdEl = document.getElementById('editRecordScheduled');
+
+  if (!monEl || !payEl || !schEl || !bkdEl || !schdEl) {
+    console.error('showEditRecordModal: edit-record inputs not found in DOM');
+    return;
+  }
+
+  // Populate the inputs as before
+  const l   = window._latestRec || {},
+        dtr = l.thisRec,
+        dt  = dtr && dtr.Month ? new Date("1 "+dtr.Month) : new Date(),
+        yy  = dt.getFullYear(),
+        mm  = ('0'+(dt.getMonth()+1)).slice(-2);
+
+  monEl.value    = yy+'-'+mm;
+  payEl.value    = (dtr&&dtr.Payment)||'未';
+  schEl.value    = (dtr&&dtr.Schedule)||'未';
+  bkdEl.value    = (dtr&&dtr.Booked)||0;
+  schdEl.value   = (dtr&&dtr.Scheduled)||0;
+
+  // enforce Scheduled ≤ Booked
+  bkdEl.oninput  = () => {
+    schdEl.max = bkdEl.value;
+    if (+schdEl.value > +bkdEl.value) schdEl.value = bkdEl.value;
+  };
+  schdEl.oninput = () => {
+    if (+schdEl.value > +bkdEl.value) schdEl.value = bkdEl.value;
+  };
+
+  // Finally show the modal
+  $('#editRecordModal').modal('show');
+}
+
+
+  function submitEditRecord(){
+    var rec = {
+      'Student ID': currentDetailsId,
+      'Month':      document.getElementById('editRecordMonth').value,
+      'Payment':    document.getElementById('editRecordPayment').value,
+      'Schedule':   document.getElementById('editRecordSchedule').value,
+      'Booked':     document.getElementById('editRecordBooked').value,
+      'Scheduled':  document.getElementById('editRecordScheduled').value
+    };
+    if(+rec.Scheduled>+rec.Booked) rec.Scheduled=rec.Booked;
+
+    $('#editRecordModal').modal('hide');
+    showLoader();
+    google.script.run
+      .withSuccessHandler(function(){ viewDetails(currentDetailsId); })
+      .saveMonthlyRecord(rec, window._recordExists);
+  }
+</script>

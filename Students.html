@@ -1,0 +1,27 @@
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h2>Student List</h2>
+</div>
+
+<!-- Search -->
+<div class="mb-3">
+  <input
+    type="text"
+    id="searchInput"
+    class="form-control form-control-lg"
+    style="font-size:1.5rem; height:3.5rem;"
+    placeholder="Search">
+</div>
+
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead><tr id="tableHeader"></tr></thead>
+        <tbody id="studentTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+  if (typeof onLoad === 'function') onLoad();
+</script> 

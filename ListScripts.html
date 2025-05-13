@@ -1,0 +1,124 @@
+<script>
+  // State for the student list
+  window._headers     = [];
+  window._rows        = [];
+  window._displayRows = [];
+  window._sortCol     = null;
+  window._sortAsc     = true;
+
+  /**
+   * onLoad: initialize app on page load
+   */
+  function onLoad() {
+    showLoader();
+    // Fetch students from server
+    google.script.run
+      .withSuccessHandler(function(data) {
+        // data[0] is headers, data.slice(1) are rows
+        window._headers     = data[0];
+        window._rows        = data.slice(1);
+        window._displayRows = window._rows.slice();
+
+        buildTableHeader();
+        renderTable();
+        hookSearch();
+
+        // Auto-focus search input for quick typing
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+
+        hideLoader();
+      })
+      .withFailureHandler(function(e) {
+        console.error('Error fetching students:', e);
+        hideLoader();
+      })
+      .getStudents();
+
+    // Toggle sidebar collapse/expand
+    document.getElementById('toggleSidebarBtn').onclick = function() {
+      showLoader();
+      var sb = document.getElementById('sidebar');
+      sb.addEventListener('transitionend', hideLoader, { once:true });
+      document.body.classList.toggle('sidebar-collapsed');
+    };
+  }
+
+  /**
+   * buildTableHeader: render clickable column headers with sort indicators
+   */
+  function buildTableHeader() {
+    var thead = document.getElementById('tableHeader');
+    thead.innerHTML = '';
+    window._headers.forEach(function(h, i) {
+      var th = document.createElement('th');
+      th.textContent = h + (window._sortCol === i ? (window._sortAsc ? ' ▲' : ' ▼') : '');
+      th.style.cursor = 'pointer';
+      th.onclick = function() {
+        if (window._sortCol === i) window._sortAsc = !window._sortAsc;
+        else {
+          window._sortCol = i;
+          window._sortAsc = true;
+        }
+        sortDisplayRows();
+        buildTableHeader();
+        renderTable();
+      };
+      thead.appendChild(th);
+    });
+  }
+
+  /**
+   * renderTable: display the filtered & sorted rows in the table body
+   */
+  function renderTable() {
+    var tbody = document.getElementById('studentTable');
+    tbody.innerHTML = '';
+    if (!window._displayRows.length) {
+      tbody.innerHTML = '<tr><td colspan="'+window._headers.length+'" class="text-center">No students.</td></tr>';
+      return;
+    }
+    var idIdx = window._headers.indexOf('ID');
+    window._displayRows.forEach(function(row) {
+      var tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.onclick = function() { viewDetails(row[idIdx]); };
+      row.forEach(function(c) {
+        var td = document.createElement('td');
+        td.textContent = c;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  /**
+   * hookSearch: filter rows as user types in search box
+   */
+  function hookSearch() {
+    document.getElementById('searchInput').oninput = function() {
+      var q = this.value.trim().toLowerCase();
+      window._displayRows = q
+        ? window._rows.filter(r => r.some(c => String(c).toLowerCase().includes(q)))
+        : window._rows.slice();
+      sortDisplayRows();
+      renderTable();
+    };
+  }
+
+  /**
+   * sortDisplayRows: helper to sort window._displayRows based on current sort settings
+   */
+  function sortDisplayRows() {
+    if (window._sortCol === null) return;
+    window._displayRows.sort(function(a, b) {
+      var v1 = a[window._sortCol], v2 = b[window._sortCol];
+      if (v1 == v2) return 0;
+      if (window._sortAsc) return v1 > v2 ? 1 : -1;
+      return v1 < v2 ? 1 : -1;
+    });
+  }
+</script>

@@ -1,0 +1,141 @@
+<script>
+  /**
+   * Return a Bootstrap badge <span> with dynamic color based on status:
+   * - Grey:   退会, DEMO
+   * - Orange: 休会
+   * - Green:  在籍
+   * - Red:    返信なし
+   */
+  function getStatusBadge(status) {
+    var cls = 'badge-secondary'; // default grey
+    switch (status) {
+      case '在籍':
+        cls = 'badge-success';   // green
+        break;
+      case '休会':
+        cls = 'badge-warning';   // orange
+        break;
+      case '返信なし':
+        cls = 'badge-danger';    // red
+        break;
+      case '退会':
+      case 'DEMO':
+      default:
+        cls = 'badge-secondary'; // grey
+    }
+    return '<span class="badge ' + cls + '">' + status + '</span>';
+  }
+
+  function viewDetails(id) {
+    currentDetailsId = id; showLoader();
+    google.script.run.withSuccessHandler(function(data) {
+      _detailData = data;
+      google.script.run.withSuccessHandler(function(latest) {
+        window._latestRec    = latest;
+        window._recordExists = (latest.thisRec !== null);
+        renderDetails(_detailData, latest);
+      }).getLatestByMonth(id);
+    }).getStudentDetails(id);
+  }
+
+  function renderDetails(data, latest) {
+    // Name
+    document.getElementById('detailsModalLabel').textContent = data.student.Name;
+
+    // Status badge (dynamic color)
+    var st = data.student.Status || '';
+    document.getElementById('detailsStatus').innerHTML =
+      st ? getStatusBadge(st) : '';
+
+    // 当日キャンセル badge
+    var cn = data.student['当日キャンセル'] || '';
+    if (cn) {
+      var cls = cn === '済' ? 'badge badge-danger'
+                            : 'badge badge-success';
+      document.getElementById('detailsCancel').innerHTML =
+        '<span class="' + cls + '">' + cn + '</span>';
+    } else {
+      document.getElementById('detailsCancel').innerHTML = '';
+    }
+
+    // Latest record fill
+    function fill(p, r) {
+      var pay = r && r.Payment != null ? r.Payment : '未',
+          sch = r && r.Schedule != null ? r.Schedule : '未',
+          bkd = r && r.Booked != null   ? r.Booked   : 0,
+          schd= r && r.Scheduled != null ? r.Scheduled: 0;
+      document.getElementById('curPayment'   + p).textContent = pay;
+      document.getElementById('curSchedule'  + p).textContent = sch;
+      document.getElementById('curBooked'    + p).textContent = bkd;
+      document.getElementById('curScheduled' + p).textContent = schd + '/' + bkd;
+    }
+    fill('This', latest.thisRec);
+    fill('Next', latest.nextRec);
+
+    // Notes…
+    var notes = data.notes.slice().sort(function(a, b) {
+      var da = a.Date.split('/'), db = b.Date.split('/');
+      return new Date(db[2], db[1] - 1, db[0])
+           - new Date(da[2], da[1] - 1, da[0]);
+    });
+    var nh = document.getElementById('notesHeader'),
+        nb = document.getElementById('notesBody');
+    nh.innerHTML = '';
+    nb.innerHTML = '';
+    if (notes.length) {
+      ['Notes ID', 'Date', 'Note', 'Staff'].forEach(function(c) {
+        nh.insertAdjacentHTML('beforeend', '<th>' + c + '</th>');
+      });
+      notes.forEach(function(r) {
+        var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => showNoteModal(r);
+        ['Notes ID', 'Date', 'Note', 'Staff'].forEach(function(c) {
+          var td = document.createElement('td');
+          td.textContent = r[c] || '';
+          tr.appendChild(td);
+        });
+        nb.appendChild(tr);
+      });
+    } else {
+      nb.innerHTML = '<tr><td colspan="4" class="text-center">No notes.</td></tr>';
+    }
+
+    // Payments…
+    var payF = ['Transaction ID', 'Date', 'Year', 'Month', 'Price', 'Lessons', 'Method', 'Staff'],
+        ph   = document.getElementById('paymentsHeader'),
+        pb   = document.getElementById('paymentsBody');
+    ph.innerHTML = '';
+    pb.innerHTML = '';
+    if (data.payments.length) {
+      payF.forEach(f => ph.insertAdjacentHTML('beforeend', '<th>' + f + '</th>'));
+      data.payments.forEach(function(r) {
+        var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => showPaymentModal(r);
+        payF.forEach(function(f) {
+          var td = document.createElement('td'),
+              v  = f === 'Price'   ? r['Total']   
+                 : f === 'Lessons' ? r['Amount']  
+                 : (r[f] || '');
+          td.textContent = v;
+          tr.appendChild(td);
+        });
+        pb.appendChild(tr);
+      });
+    } else {
+      pb.innerHTML = '<tr><td colspan="'+ payF.length +'" class="text-center">No payments.</td></tr>';
+    }
+
+    hideLoader();
+    $('#detailsModal').modal('show');
+  }
+
+  function deleteFromDetails() {
+    if (confirm('Delete this student?')) {
+      $('#detailsModal').modal('hide');
+      showLoader();
+      google.script.run.withSuccessHandler(onLoad).deleteStudent(currentDetailsId);
+    }
+  }
+</script>

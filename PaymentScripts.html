@@ -1,0 +1,131 @@
+<!-- PaymentScripts.html -->
+<script>
+  function showPaymentModal(p) {
+    const form      = document.getElementById('paymentForm');
+    const titleEl   = document.getElementById('paymentModalLabel');
+    const txnEl     = document.getElementById('paymentTxnId');
+    const lessonsEl = document.getElementById('paymentLessons');
+    const priceEl   = document.getElementById('paymentPrice');
+    const methodEl  = document.getElementById('paymentMethod');
+    const staffEl   = document.getElementById('paymentStaff');
+
+    if (!form) return console.error('Modal form not found');
+    form.reset();
+
+    // Always set date/year/month to today
+    const now = new Date();
+    document.getElementById('paymentDate').value = now.toISOString().slice(0,10);
+    document.getElementById('paymentYear').value = now.getFullYear();
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    document.getElementById('paymentMonth').value = months[now.getMonth()] + ' ' + now.getFullYear();
+
+    // Populate Method dropdown
+    methodEl.innerHTML = '';
+    ['Cash','Card','Paypay','Bank Transfer'].forEach(m =>
+      methodEl.add(new Option(m, m))
+    );
+
+    if (p && p['Transaction ID']) {
+      // EDIT
+      titleEl.textContent = 'Edit Payment';
+      txnEl.value = p['Transaction ID'];
+      lessonsEl.value    = p.Amount;
+      lessonsEl.readOnly = true;
+      priceEl.value      = p.Total;
+      methodEl.value     = p.Method;
+      staffEl.innerHTML  = '';
+      staffEl.add(new Option(p.Staff, p.Staff));
+      $('#paymentModal').modal('show');
+    } else {
+      // ADD NEW
+      titleEl.textContent = 'Add Payment';
+      txnEl.value = '';
+
+      // Prefill lessons from latest Booked
+      const booked = window._latestRec?.thisRec?.Booked || 0;
+      lessonsEl.value    = booked;
+      lessonsEl.readOnly = true;
+
+      let pending = 2;
+      function tryShow() {
+        if (--pending === 0) $('#paymentModal').modal('show');
+      }
+
+      // Calculate total via new server function
+      google.script.run
+        .withSuccessHandler(total => { priceEl.value = total; tryShow(); })
+        .withFailureHandler(err => { console.error(err); priceEl.value = 0; tryShow(); })
+        .getTotalFeeForStudent(currentDetailsId, booked);
+
+      // Fetch current staff
+      staffEl.innerHTML = '';
+      google.script.run
+        .withSuccessHandler(name => { staffEl.add(new Option(name, name)); tryShow(); })
+        .withFailureHandler(err => { console.error(err); tryShow(); })
+        .getCurrentStaffName();
+    }
+  }
+
+  function submitPayment() {
+    // 1) Build the payload from the form fields
+    const txnId             = document.getElementById('paymentTxnId').value;
+    const paymentDate       = document.getElementById('paymentDate').value;
+    const paymentYear       = document.getElementById('paymentYear').value;
+    const paymentMonth      = document.getElementById('paymentMonth').value;
+    const lessons           = document.getElementById('paymentLessons').value;
+    const total             = document.getElementById('paymentPrice').value;
+    const method            = document.getElementById('paymentMethod').value;
+    const staff             = document.getElementById('paymentStaff').value;
+    const scheduledCount    = document.getElementById('paymentScheduledCount').value;
+    const studentId         = currentDetailsId;  // from your details context
+
+    // 2) Assemble into an object matching your sheet headers
+    const payload = {
+      'Transaction ID':  txnId || null,
+      'Date':            paymentDate,
+      'Year':            paymentYear,
+      'Month':           paymentMonth,
+      'Lessons':         lessons,
+      'Total':           total,
+      'Payment':         '済',                // auto-mark payment done
+      'Schedule':        record?.Schedule || '未',
+      'Booked':          lessons,
+      'ScheduledCount':  scheduledCount,
+      'Scheduled':       (Number(lessons) === Number(scheduledCount)) ? '済' : '未',
+      'Method':          method,
+      'Staff':           staff,
+      'Student ID':      studentId
+    };
+
+    // 3) Show the loader
+    showLoader();
+
+    // 4) Call server: insert vs update
+    if (txnId) {
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onError)
+        .updatePayment(payload);
+    } else {
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onError)
+        .insertPayment(payload);
+    }
+
+    // 5) Prevent default form submission
+    return false;
+
+    // ————————————————————————————————————————————————
+    function onSuccess() {
+      hideLoader();
+      $('#paymentModal').modal('hide');
+      viewDetails(studentId);
+    }
+    function onError(err) {
+      hideLoader();
+      alert('Error saving payment: ' + err.message);
+    }
+  }
+</script>
